@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLACK SYSTEM | Underworld Network v3.0</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-red: #ff003c;
+            --neon-cyan: #00f5ff;
+            --neon-purple: #bf00ff;
+            --neon-gold: #ffd700;
+            --neon-green: #00ff41;
+            --plasma: #ff6ec7;
+            --dark: #050508;
+            --panel: rgba(5, 0, 15, 0.88);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Rajdhani', sans-serif; background: var(--dark); color: #ccc; overflow-x: hidden; min-height: 100vh; cursor: none; }
+
+        /* === CURSOR === */
+        #cursor { position: fixed; width: 22px; height: 22px; border: 2px solid var(--neon-cyan); border-radius: 50%; pointer-events: none; z-index: 99999; transform: translate(-50%,-50%); transition: width .2s, height .2s, border-color .2s; box-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan); }
+        #cursor-dot { position: fixed; width: 4px; height: 4px; background: var(--neon-cyan); border-radius: 50%; pointer-events: none; z-index: 99999; transform: translate(-50%,-50%); }
+        #cursor.clicked { width: 44px; height: 44px; border-color: var(--neon-red); box-shadow: 0 0 20px var(--neon-red); }
+        .trail { position: fixed; border-radius: 50%; pointer-events: none; z-index: 99990; transform: translate(-50%,-50%); }
+
+        /* === BG === */
+        #matrix-canvas { position: fixed; inset: 0; z-index: 0; opacity: 0.11; }
+        .ambient-bg { position: fixed; inset: 0; z-index: 0; background: radial-gradient(ellipse at 15% 20%, rgba(191,0,255,.07) 0%, transparent 50%), radial-gradient(ellipse at 85% 80%, rgba(255,0,51,.1) 0%, transparent 50%), radial-gradient(ellipse at 50% 50%, rgba(0,245,255,.04) 0%, transparent 60%); }
+        .scanlines { position: fixed; inset: 0; z-index: 1; pointer-events: none; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.13) 2px, rgba(0,0,0,.13) 4px); }
+
+        /* === LAYOUT === */
+        .container { max-width: 1340px; margin: 0 auto; padding: 20px; position: relative; z-index: 10; }
+
+        /* === HEADER === */
+        header { text-align: center; padding: 40px 0 30px; border-bottom: 1px solid rgba(255,0,51,.3); margin-bottom: 40px; position: relative; }
+        .system-status-bar { display: flex; justify-content: space-between; align-items: center; font-family: 'Share Tech Mono', monospace; font-size: .7rem; color: var(--neon-green); margin-bottom: 20px; padding: 6px 12px; border: 1px solid rgba(0,255,65,.2); border-radius: 3px; background: rgba(0,255,65,.03); flex-wrap: wrap; gap: 6px; }
+        .status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--neon-green); box-shadow: 0 0 8px var(--neon-green); animation: blink 1.2s infinite; margin-right: 5px; }
+
+        h1 { font-family: 'Orbitron', sans-serif; font-size: 4.8rem; font-weight: 900; letter-spacing: 10px; position: relative; display: inline-block; color: #fff; text-shadow: 0 0 10px var(--neon-red), 0 0 30px var(--neon-red), 0 0 60px rgba(255,0,51,.5); }
+        h1::before, h1::after { content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; }
+        h1::before { animation: glitch1 3.5s infinite; color: var(--neon-cyan); clip-path: polygon(0 30%,100% 30%,100% 50%,0 50%); opacity: .7; }
+        h1::after { animation: glitch2 3.5s infinite; color: var(--neon-purple); clip-path: polygon(0 60%,100% 60%,100% 80%,0 80%); opacity: .7; }
+        @keyframes glitch1 { 0%,90%,100%{transform:translate(0);opacity:0} 91%{transform:translate(-3px,1px);opacity:.7} 93%{transform:translate(3px,-1px);opacity:.7} 95%{transform:translate(-2px,0);opacity:.7} 97%{transform:translate(0);opacity:0} }
+        @keyframes glitch2 { 0%,92%,100%{transform:translate(0);opacity:0} 93%{transform:translate(3px,2px);opacity:.7} 95%{transform:translate(-3px,-1px);opacity:.7} 97%{transform:translate(1px,0);opacity:.7} 99%{transform:translate(0);opacity:0} }
+
+        .tagline { font-family: 'Share Tech Mono', monospace; font-size: .93rem; color: var(--neon-cyan); letter-spacing: 5px; text-transform: uppercase; margin-top: 12px; opacity: .85; }
+        .threat-meter { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 18px; font-family: 'Share Tech Mono', monospace; font-size: .75rem; color: var(--neon-gold); }
+        .threat-bar { width: 200px; height: 6px; background: rgba(255,215,0,.1); border: 1px solid rgba(255,215,0,.3); border-radius: 3px; overflow: hidden; }
+        .threat-fill { height: 100%; background: linear-gradient(90deg, var(--neon-green), var(--neon-gold), var(--neon-red)); width: 0%; animation: threatLoad 3s ease-out 1.2s forwards; box-shadow: 0 0 10px var(--neon-gold); }
+        @keyframes threatLoad { to { width: 87%; } }
+
+        .sound-viz { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 38px; margin-top: 15px; }
+        .viz-bar { width: 4px; background: linear-gradient(to top, var(--neon-red), var(--neon-purple), var(--neon-cyan)); border-radius: 2px; animation: vizAnim var(--dur,.6s) ease-in-out infinite alternate; box-shadow: 0 0 3px var(--neon-cyan); }
+        @keyframes vizAnim { from{height:4px;opacity:.4} to{height:var(--h,20px);opacity:1} }
+
+        /* === REALISTIC CHARACTER === */
+        .character-wrap { position: absolute; top: 0; right: 0; width: 160px; height: 280px; filter: drop-shadow(0 0 18px rgba(0,245,255,.45)); animation: floatChar 6s ease-in-out infinite; z-index: 5; }
+        @keyframes floatChar { 0%,100%{transform:translateY(0) rotate(-.5deg)} 50%{transform:translateY(-14px) rotate(.5deg)} }
+
+        /* === PANELS === */
+        .panel { background: var(--panel); border: 1px solid rgba(255,0,51,.25); border-radius: 8px; padding: 22px; position: relative; overflow: hidden; backdrop-filter: blur(10px); }
+        .panel::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:linear-gradient(90deg,transparent,var(--neon-red),var(--neon-purple),var(--neon-cyan),transparent); }
+        .panel-glow { box-shadow: 0 0 20px rgba(255,0,51,.15), inset 0 0 30px rgba(191,0,255,.05); }
+        .panel h2 { font-family:'Orbitron',sans-serif; font-size:1rem; letter-spacing:3px; margin-bottom:15px; text-transform:uppercase; background:linear-gradient(90deg,var(--neon-red),var(--neon-purple),var(--neon-cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+        .hex-bg { position:absolute; inset:0; opacity:.03; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V16L28 0l28 16v34L28 66zM28 100L0 84V50l28-16 28 16v34L28 100z' fill='none' stroke='%2300f5ff' stroke-width='0.5'/%3E%3C/svg%3E"); z-index:0; pointer-events:none; }
+
+        .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 30px; }
+
+        /* === TERMINAL === */
+        .code-container { background:rgba(0,0,0,.8); border:1px solid rgba(0,255,65,.2); border-radius:5px; padding:15px; font-family:'Share Tech Mono',monospace; font-size:.82rem; color:var(--neon-green); height:310px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--neon-green) transparent; }
+        .code-container::-webkit-scrollbar{width:4px} .code-container::-webkit-scrollbar-thumb{background:var(--neon-green);border-radius:2px}
+        .code-line { margin-bottom:6px; padding-left:18px; position:relative; opacity:0; animation:fadeInLine .3s ease forwards; }
+        @keyframes fadeInLine{to{opacity:1}}
+        .code-line::before{content:'▶';position:absolute;left:0;color:var(--neon-red);font-size:.7rem;top:2px}
+        .code-line.warn{color:var(--neon-gold)} .code-line.info{color:var(--neon-cyan)} .code-line.success{color:var(--neon-green)} .code-line.danger{color:var(--neon-red)} .code-line.purple{color:var(--neon-purple)}
+        .terminal-cursor { display:inline-block; width:8px; height:14px; background:var(--neon-green); vertical-align:middle; margin-left:4px; animation:blink 1s infinite; }
+
+        /* === OPERATIVES GRID === */
+        .operatives-section { margin: 30px 0; }
+        .operatives-section > h2 { font-family:'Orbitron',sans-serif; font-size:1.3rem; letter-spacing:5px; text-align:center; margin-bottom:25px; background:linear-gradient(90deg,var(--neon-red),var(--neon-purple),var(--neon-cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+
+        .operatives-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 20px; }
+
+        .operative-card { background:rgba(5,0,20,.9); border:1px solid rgba(191,0,255,.25); border-radius:10px; overflow:hidden; cursor:pointer; transition:all .35s ease; position:relative; }
+        .operative-card:hover { transform:translateY(-6px); border-color:var(--neon-cyan); box-shadow:0 16px 40px rgba(0,245,255,.2), 0 0 1px rgba(0,245,255,.4); }
+        .operative-card:hover .card-glow-line { opacity:1; }
+
+        .card-glow-line { position:absolute; top:0;left:0;right:0; height:2px; background:linear-gradient(90deg,transparent,var(--neon-cyan),var(--neon-purple),transparent); opacity:0; transition:opacity .3s; }
+
+        .card-header { display:flex; align-items:center; gap:14px; padding:18px; background:rgba(0,0,0,.3); border-bottom:1px solid rgba(255,255,255,.05); }
+        .card-avatar { width:56px; height:56px; border-radius:50%; border:2px solid rgba(0,245,255,.4); overflow:hidden; flex-shrink:0; position:relative; background:#0a001a; display:flex; align-items:center; justify-content:center; }
+        .card-avatar svg { width:100%; height:100%; }
+        .avatar-ring { position:absolute; inset:-3px; border-radius:50%; border:1px solid transparent; background:linear-gradient(135deg,var(--neon-cyan),var(--neon-purple)) border-box; -webkit-mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); mask:linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; animation:spinRing 6s linear infinite; }
+        @keyframes spinRing{to{transform:rotate(360deg)}}
+
+        .card-identity h3 { font-family:'Orbitron',sans-serif; font-size:.95rem; color:#fff; letter-spacing:2px; margin-bottom:3px; }
+        .card-identity .rank { font-family:'Share Tech Mono',monospace; font-size:.72rem; color:var(--neon-gold); letter-spacing:1px; }
+        .card-identity .specialty { font-size:.78rem; color:rgba(180,160,220,.7); margin-top:2px; }
+
+        .card-online { position:absolute; top:14px; right:14px; }
+        .online-dot { width:8px; height:8px; border-radius:50%; background:var(--neon-green); box-shadow:0 0 10px var(--neon-green); animation:blink 2s infinite; display:inline-block; }
+
+        .card-body { padding:16px 18px; }
+        .card-bio { font-size:.85rem; color:rgba(200,190,220,.75); line-height:1.6; margin-bottom:14px; }
+
+        .skill-bars { display:flex; flex-direction:column; gap:8px; }
+        .skill-row { display:flex; align-items:center; gap:8px; }
+        .skill-label { font-family:'Share Tech Mono',monospace; font-size:.65rem; color:rgba(180,160,220,.6); width:110px; flex-shrink:0; letter-spacing:.5px; }
+        .skill-track { flex:1; height:5px; background:rgba(255,255,255,.07); border-radius:3px; overflow:hidden; }
+        .skill-fill { height:100%; border-radius:3px; width:0; transition:width 1.2s cubic-bezier(.4,0,.2,1); }
+        .skill-fill.c { background:linear-gradient(90deg,var(--neon-purple),var(--neon-cyan)); box-shadow:0 0 6px var(--neon-cyan); }
+        .skill-fill.r { background:linear-gradient(90deg,var(--neon-red),var(--neon-gold)); box-shadow:0 0 6px var(--neon-gold); }
+        .skill-fill.g { background:linear-gradient(90deg,var(--neon-green),var(--neon-cyan)); box-shadow:0 0 6px var(--neon-green); }
+        .skill-pct { font-family:'Share Tech Mono',monospace; font-size:.65rem; color:rgba(200,200,200,.5); width:28px; text-align:right; }
+
+        .card-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:13px; }
+        .tag { font-family:'Share Tech Mono',monospace; font-size:.62rem; padding:3px 8px; border-radius:3px; letter-spacing:.5px; }
+        .tag.c { background:rgba(0,245,255,.08); border:1px solid rgba(0,245,255,.2); color:var(--neon-cyan); }
+        .tag.r { background:rgba(255,0,60,.08); border:1px solid rgba(255,0,60,.2); color:var(--neon-red); }
+        .tag.g { background:rgba(0,255,65,.08); border:1px solid rgba(0,255,65,.2); color:var(--neon-green); }
+        .tag.p { background:rgba(191,0,255,.08); border:1px solid rgba(191,0,255,.2); color:var(--neon-purple); }
+        .tag.gold { background:rgba(255,215,0,.08); border:1px solid rgba(255,215,0,.2); color:var(--neon-gold); }
+
+        .card-footer { padding:12px 18px; border-top:1px solid rgba(255,255,255,.05); display:flex; align-items:center; justify-content:space-between; }
+        .voice-btn { background:transparent; border:1px solid rgba(0,245,255,.3); color:var(--neon-cyan); font-family:'Share Tech Mono',monospace; font-size:.68rem; padding:5px 12px; border-radius:4px; cursor:pointer; transition:all .2s; letter-spacing:1px; }
+        .voice-btn:hover { background:rgba(0,245,255,.1); box-shadow:0 0 12px rgba(0,245,255,.2); }
+        .clearance-badge { font-family:'Share Tech Mono',monospace; font-size:.65rem; padding:3px 8px; border-radius:3px; }
+        .clearance-badge.high { background:rgba(255,0,60,.1); border:1px solid rgba(255,0,60,.3); color:var(--neon-red); }
+        .clearance-badge.med { background:rgba(255,215,0,.1); border:1px solid rgba(255,215,0,.3); color:var(--neon-gold); }
+
+        /* === VOICE CONTROL PANEL === */
+        .voice-panel { background:var(--panel); border:1px solid rgba(191,0,255,.25); border-radius:8px; padding:25px; margin:30px 0; position:relative; overflow:hidden; backdrop-filter:blur(10px); }
+        .voice-panel::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:linear-gradient(90deg,transparent,var(--neon-purple),var(--neon-cyan),transparent); }
+        .voice-panel h2 { font-family:'Orbitron',sans-serif; font-size:1rem; letter-spacing:4px; margin-bottom:20px; color:var(--neon-purple); text-shadow:0 0 15px var(--neon-purple); text-align:center; }
+        .voice-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:18px; }
+        .voice-option { background:rgba(191,0,255,.05); border:1px solid rgba(191,0,255,.2); border-radius:6px; padding:14px; text-align:center; cursor:pointer; transition:all .3s; position:relative; }
+        .voice-option:hover, .voice-option.active { background:rgba(191,0,255,.12); border-color:var(--neon-purple); box-shadow:0 0 18px rgba(191,0,255,.2); }
+        .voice-option.active::after { content:'●'; position:absolute; top:6px;right:8px; font-size:.6rem; color:var(--neon-green); }
+        .voice-icon { font-size:1.6rem; margin-bottom:6px; }
+        .voice-name { font-family:'Orbitron',sans-serif; font-size:.72rem; color:#fff; letter-spacing:2px; margin-bottom:3px; }
+        .voice-desc { font-size:.68rem; color:rgba(200,180,255,.55); font-family:'Share Tech Mono',monospace; }
+        .voice-controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+        .vc-btn { background:transparent; border:1px solid rgba(0,245,255,.3); color:var(--neon-cyan); font-family:'Share Tech Mono',monospace; font-size:.72rem; padding:8px 16px; border-radius:5px; cursor:pointer; transition:all .2s; letter-spacing:1px; }
+        .vc-btn:hover { background:rgba(0,245,255,.08); box-shadow:0 0 14px rgba(0,245,255,.2); }
+        .vc-btn.stop { border-color:rgba(255,0,60,.3); color:var(--neon-red); }
+        .vc-btn.stop:hover { background:rgba(255,0,60,.08); }
+        .speech-status { font-family:'Share Tech Mono',monospace; font-size:.72rem; color:rgba(200,200,200,.5); margin-left:auto; }
+        .speech-status.speaking { color:var(--neon-green); animation:pulse 1s infinite; }
+
+        /* === AI STATS === */
+        .ai-section { background:var(--panel); border:1px solid rgba(191,0,255,.2); border-radius:8px; padding:25px; margin:30px 0; position:relative; overflow:hidden; }
+        .ai-section::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:linear-gradient(90deg,transparent,var(--neon-purple),transparent); }
+        .ai-section h2 { font-family:'Orbitron',sans-serif; font-size:1.1rem; letter-spacing:4px; text-align:center; margin-bottom:20px; color:var(--neon-purple); text-shadow:0 0 20px var(--neon-purple); }
+        .ai-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:15px; }
+        .ai-stat { text-align:center; padding:15px 10px; background:rgba(191,0,255,.05); border:1px solid rgba(191,0,255,.15); border-radius:6px; }
+        .ai-stat-value { font-family:'Orbitron',sans-serif; font-size:1.8rem; font-weight:900; background:linear-gradient(135deg,var(--neon-purple),var(--neon-cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+        .ai-stat-label { font-family:'Share Tech Mono',monospace; font-size:.68rem; color:rgba(200,180,255,.6); letter-spacing:1px; margin-top:4px; }
+        .stat-counter { display:inline-block; }
+
+        /* === SOCIAL === */
+        .social-section { background:var(--panel); border:1px solid rgba(0,245,255,.15); border-radius:8px; padding:35px; margin:30px 0; position:relative; overflow:hidden; backdrop-filter:blur(10px); }
+        .social-section::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:linear-gradient(90deg,transparent,var(--neon-cyan),var(--neon-purple),transparent); }
+        .social-section h2 { font-family:'Orbitron',sans-serif; text-align:center; margin-bottom:28px; font-size:1.4rem; letter-spacing:4px; background:linear-gradient(90deg,var(--neon-cyan),var(--neon-purple),var(--neon-gold)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+        .social-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(175px,1fr)); gap:20px; max-width:1000px; margin:0 auto; }
+        .social-btn { background:rgba(5,0,20,.8); border:1px solid rgba(0,245,255,.2); border-radius:10px; padding:22px 15px; text-align:center; transition:all .3s ease; position:relative; overflow:hidden; cursor:pointer; }
+        .social-btn::before { content:''; position:absolute; inset:-1px; border-radius:10px; padding:1px; background:linear-gradient(135deg,var(--neon-cyan),var(--neon-purple),var(--neon-red)); -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; opacity:0; transition:opacity .3s; }
+        .social-btn:hover::before{opacity:1} .social-btn:hover{transform:translateY(-6px);box-shadow:0 15px 40px rgba(0,245,255,.2)}
+        .social-icon{font-size:2.2rem;margin-bottom:10px;display:block}
+        .social-btn[data-type="telegram"] .social-icon{color:#2aabee;text-shadow:0 0 15px #2aabee}
+        .social-btn[data-type="instagram"] .social-icon{color:#e1306c;text-shadow:0 0 15px #e1306c}
+        .social-btn[data-type="tiktok"] .social-icon{color:#69c9d0;text-shadow:0 0 15px #69c9d0}
+        .social-btn[data-type="github"] .social-icon{color:#c9d1d9;text-shadow:0 0 15px #c9d1d9}
+        .social-btn[data-type="darkweb"] .social-icon{color:var(--plasma);text-shadow:0 0 15px var(--plasma)}
+        .social-name{font-family:'Orbitron',sans-serif;font-size:.85rem;color:rgba(255,255,255,.85);margin-bottom:6px;letter-spacing:2px}
+        .social-handle{font-family:'Share Tech Mono',monospace;font-size:.88rem;color:var(--neon-green);background:rgba(0,255,65,.07);padding:4px 8px;border-radius:3px;display:inline-block;border:1px solid rgba(0,255,65,.15);transition:all .3s}
+        .social-btn:hover .social-handle{color:var(--neon-gold);border-color:rgba(255,215,0,.3);text-shadow:0 0 8px var(--neon-gold)}
+
+        /* === FOOTER === */
+        footer{text-align:center;padding:30px 0 20px;border-top:1px solid rgba(255,0,51,.2);font-family:'Share Tech Mono',monospace;margin-top:20px}
+        footer p:first-child{color:var(--neon-red);letter-spacing:3px;font-size:.85rem;animation:pulse 2s infinite;text-shadow:0 0 10px var(--neon-red)}
+        footer p:last-child{color:rgba(200,200,200,.5);font-size:.7rem;margin-top:8px;letter-spacing:2px}
+        .glow-text{color:var(--neon-green);text-shadow:0 0 8px var(--neon-green);animation:glow 2s infinite alternate}
+
+        /* === NOTIFICATION === */
+        .notification{position:fixed;top:20px;right:20px;background:rgba(0,10,0,.95);color:var(--neon-green);padding:12px 22px;border-radius:6px;border:1px solid var(--neon-green);box-shadow:0 0 20px rgba(0,255,65,.3);font-family:'Share Tech Mono',monospace;font-size:.78rem;z-index:10000;transform:translateX(150%);transition:transform .4s cubic-bezier(.34,1.56,.64,1);max-width:310px}
+        .notification.show{transform:translateX(0)}
+        .notification.warn{border-color:var(--neon-gold);color:var(--neon-gold);box-shadow:0 0 20px rgba(255,215,0,.3)}
+        .notification.danger{border-color:var(--neon-red);color:var(--neon-red);box-shadow:0 0 20px rgba(255,0,51,.3)}
+
+        /* === PORTAL === */
+        .overlay{position:fixed;inset:0;background:rgba(0,0,10,.9);z-index:5000;display:none;backdrop-filter:blur(5px)}
+        .overlay.active{display:block}
+        .access-portal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.8);width:440px;background:rgba(5,0,20,.98);border:1px solid rgba(0,245,255,.3);border-radius:12px;z-index:5001;opacity:0;transition:all .4s cubic-bezier(.34,1.56,.64,1);box-shadow:0 0 40px rgba(0,245,255,.2),0 0 80px rgba(191,0,255,.1);overflow:hidden}
+        .access-portal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--neon-cyan),var(--neon-purple),transparent)}
+        .access-portal.open{transform:translate(-50%,-50%) scale(1);opacity:1}
+        .portal-header{background:rgba(0,245,255,.05);padding:20px 25px;border-bottom:1px solid rgba(0,245,255,.1)}
+        .portal-header h2{font-family:'Orbitron',sans-serif;font-size:1rem;letter-spacing:3px;color:var(--neon-cyan);text-shadow:0 0 15px var(--neon-cyan)}
+        .portal-content{padding:20px 25px;font-family:'Share Tech Mono',monospace;font-size:.82rem;color:var(--neon-green);line-height:1.9;min-height:120px}
+        .portal-content span{color:var(--neon-cyan)}
+        .portal-actions{display:flex;gap:10px;padding:20px 25px;border-top:1px solid rgba(0,245,255,.1)}
+        .portal-btn{flex:1;padding:10px;background:transparent;color:var(--neon-cyan);border:1px solid rgba(0,245,255,.3);border-radius:5px;font-family:'Share Tech Mono',monospace;font-size:.75rem;letter-spacing:1px;cursor:pointer;transition:all .3s}
+        .portal-btn:hover{background:rgba(0,245,255,.1);box-shadow:0 0 15px rgba(0,245,255,.2);color:#fff}
+        .portal-btn.danger{color:var(--neon-red);border-color:rgba(255,0,51,.3)}
+        .portal-btn.danger:hover{background:rgba(255,0,51,.1)}
+
+        /* === SOUND TOGGLE === */
+        #sound-toggle{position:fixed;bottom:25px;right:25px;width:46px;height:46px;background:rgba(5,0,20,.9);border:1px solid var(--neon-cyan);border-radius:50%;color:var(--neon-cyan);font-size:1.1rem;cursor:pointer;z-index:500;display:flex;align-items:center;justify-content:center;box-shadow:0 0 15px rgba(0,245,255,.3);transition:all .3s}
+        #sound-toggle:hover{background:rgba(0,245,255,.1);box-shadow:0 0 25px rgba(0,245,255,.5)}
+        #sound-toggle.muted{border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.3);box-shadow:none}
+
+        /* === ANIMATIONS === */
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+        @keyframes glow{from{text-shadow:0 0 5px var(--neon-green)}to{text-shadow:0 0 20px var(--neon-green)}}
+        @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+
+        /* === RESPONSIVE === */
+        @media(max-width:900px){.main-content{grid-template-columns:1fr} h1{font-size:3rem;letter-spacing:5px} .ai-stats{grid-template-columns:repeat(2,1fr)} .character-wrap{position:relative;top:0;right:0;margin:0 auto 15px;display:block}}
+        @media(max-width:600px){h1{font-size:2rem} .social-grid{grid-template-columns:1fr 1fr} .access-portal{width:92%} .operatives-grid{grid-template-columns:1fr} .ai-stats{grid-template-columns:1fr 1fr}}
+    </style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-dot"></div>
+<canvas id="matrix-canvas"></canvas>
+<div class="ambient-bg"></div>
+<div class="scanlines"></div>
+<button id="sound-toggle" title="Toggle Sound"><i class="fas fa-volume-up"></i></button>
+
+<div class="container">
+
+    <!-- ═══ HEADER ═══ -->
+    <header>
+        <div class="system-status-bar">
+            <span><span class="status-dot"></span>SYSTEM ONLINE</span>
+            <span id="live-clock">--:--:--</span>
+            <span>ENCRYPTION: AES-256 <span style="color:var(--neon-green)">✓</span></span>
+            <span>NODE: <span id="random-ip">---.---.---.---</span></span>
+            <span>VOICE ENGINE: <span id="voice-status" style="color:var(--neon-purple)">READY</span></span>
+        </div>
+
+        <!-- VILLAIN CHARACTER SVG -->
+        <div class="character-wrap">
+            <svg viewBox="0 0 160 290" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <!-- Skin: pale, bloodless -->
+                    <linearGradient id="vSkin" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#c0b8b0"/>
+                        <stop offset="60%" stop-color="#9a9090"/>
+                        <stop offset="100%" stop-color="#706868"/>
+                    </linearGradient>
+                    <!-- Armour body -->
+                    <linearGradient id="vArmour" x1="0%" y1="0%" x2="20%" y2="100%">
+                        <stop offset="0%" stop-color="#1c0505"/>
+                        <stop offset="50%" stop-color="#0d0000"/>
+                        <stop offset="100%" stop-color="#050000"/>
+                    </linearGradient>
+                    <!-- Cape -->
+                    <linearGradient id="vCape" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#1a0000"/>
+                        <stop offset="100%" stop-color="#050000"/>
+                    </linearGradient>
+                    <!-- Energy / crimson glow -->
+                    <radialGradient id="vEnergy" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#ff4400" stop-opacity="1"/>
+                        <stop offset="60%" stop-color="#cc0000" stop-opacity="0.7"/>
+                        <stop offset="100%" stop-color="#600000" stop-opacity="0"/>
+                    </radialGradient>
+                    <!-- Eye glow -->
+                    <radialGradient id="vEyeL" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#ff6600"/>
+                        <stop offset="100%" stop-color="#cc0000"/>
+                    </radialGradient>
+                    <!-- Gauntlet -->
+                    <linearGradient id="vGaunt" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#2a0505"/>
+                        <stop offset="100%" stop-color="#0a0000"/>
+                    </linearGradient>
+                    <!-- Ground shadow -->
+                    <radialGradient id="vShadow" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="rgba(180,0,0,0.35)"/>
+                        <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+                    </radialGradient>
+                    <!-- Crimson glow filter -->
+                    <filter id="redGlow" x="-40%" y="-40%" width="180%" height="180%">
+                        <feGaussianBlur stdDeviation="3" result="blur"/>
+                        <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                    </filter>
+                    <!-- Soft drop shadow -->
+                    <filter id="vDrop" x="-20%" y="-10%" width="140%" height="130%">
+                        <feDropShadow dx="1" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.7"/>
+                    </filter>
+                    <!-- Intense glow for eyes -->
+                    <filter id="eyeBloom" x="-100%" y="-100%" width="300%" height="300%">
+                        <feGaussianBlur stdDeviation="4" result="blur"/>
+                        <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                    </filter>
+                </defs>
+
+                <!-- ═══ GROUND SHADOW / AURA POOL ═══ -->
+                <ellipse cx="80" cy="278" rx="42" ry="9" fill="url(#vShadow)"/>
+                <ellipse cx="80" cy="278" rx="26" ry="5" fill="rgba(180,0,0,0.25)"/>
+
+                <!-- ═══ BILLOWING CAPE — behind body ═══ -->
+                <!-- Cape main body, asymmetric torn edges -->
+                <path d="M52,125 C30,145 8,190 12,255 C20,265 28,268 34,260
+                         C32,235 38,205 48,185 L58,210 L60,270 C66,278 72,279 75,272
+                         L72,210 L80,200 L88,210 L85,272 C88,279 94,278 100,270
+                         L102,210 L112,185 C122,205 128,235 126,260
+                         C132,268 140,265 148,255 C152,190 130,145 108,125Z"
+                      fill="url(#vCape)" filter="url(#vDrop)"/>
+                <!-- Cape inner lining — dark crimson -->
+                <path d="M58,140 C46,160 28,200 30,250 C34,255 38,253 40,248
+                         C42,228 46,200 52,183 L60,210 L62,265 C66,271 70,270 72,264
+                         L70,205 L80,195 L90,205 L88,264 C90,270 94,271 98,265
+                         L100,210 L108,183 C114,200 118,228 120,248
+                         C122,253 126,255 130,250 C132,200 114,160 102,140Z"
+                      fill="rgba(60,0,0,0.5)"/>
+                <!-- Cape torn hem details -->
+                <path d="M12,255 C16,260 20,258 22,253 C18,249 16,244 18,240" stroke="rgba(80,0,0,0.8)" stroke-width="1" fill="none"/>
+                <path d="M148,255 C144,260 140,258 138,253 C142,249 144,244 142,240" stroke="rgba(80,0,0,0.8)" stroke-width="1" fill="none"/>
+
+                <!-- ═══ LEGS ═══ -->
+                <!-- Left leg armour plate -->
+                <rect x="57" y="200" width="20" height="68" rx="4" fill="url(#vArmour)" filter="url(#vDrop)"/>
+                <rect x="59" y="202" width="7" height="30" rx="2" fill="rgba(255,60,0,0.08)"/>
+                <!-- Left leg armour ridge lines -->
+                <line x1="57" y1="220" x2="77" y2="220" stroke="rgba(180,0,0,0.4)" stroke-width="1"/>
+                <line x1="57" y1="240" x2="77" y2="240" stroke="rgba(180,0,0,0.3)" stroke-width="0.8"/>
+                <!-- Right leg -->
+                <rect x="83" y="200" width="20" height="68" rx="4" fill="url(#vArmour)" filter="url(#vDrop)"/>
+                <rect x="85" y="202" width="7" height="30" rx="2" fill="rgba(255,60,0,0.08)"/>
+                <line x1="83" y1="220" x2="103" y2="220" stroke="rgba(180,0,0,0.4)" stroke-width="1"/>
+                <line x1="83" y1="240" x2="103" y2="240" stroke="rgba(180,0,0,0.3)" stroke-width="0.8"/>
+                <!-- Greaves / boots -->
+                <path d="M55,256 L77,256 L80,275 L54,275Z" fill="#0a0000"/>
+                <path d="M83,256 L105,256 L106,275 L80,275Z" fill="#0a0000"/>
+                <!-- Boot spike tips -->
+                <polygon points="54,275 50,282 58,278" fill="#1a0000"/>
+                <polygon points="106,275 110,282 102,278" fill="#1a0000"/>
+                <!-- Boot buckles -->
+                <rect x="60" y="260" width="12" height="4" rx="1" fill="rgba(180,0,0,0.5)" stroke="rgba(255,60,0,0.3)" stroke-width="0.5"/>
+                <rect x="88" y="260" width="12" height="4" rx="1" fill="rgba(180,0,0,0.5)" stroke="rgba(255,60,0,0.3)" stroke-width="0.5"/>
+
+                <!-- ═══ TORSO — PLATE ARMOUR ═══ -->
+                <!-- Main chest plate -->
+                <path d="M44,130 L46,205 L114,205 L116,130 C104,118 56,118 44,130Z"
+                      fill="url(#vArmour)" filter="url(#vDrop)"/>
+                <!-- Chest plate centre ridge -->
+                <path d="M80,128 L80,205" stroke="rgba(180,0,0,0.4)" stroke-width="1.5"/>
+                <!-- Chest rib plates left -->
+                <path d="M44,150 C55,147 70,148 78,152" stroke="rgba(140,0,0,0.6)" stroke-width="1.2" fill="none"/>
+                <path d="M44,165 C55,162 70,163 78,167" stroke="rgba(140,0,0,0.5)" stroke-width="1" fill="none"/>
+                <path d="M44,180 C55,177 70,178 78,182" stroke="rgba(140,0,0,0.4)" stroke-width="0.8" fill="none"/>
+                <!-- Chest rib plates right -->
+                <path d="M116,150 C105,147 90,148 82,152" stroke="rgba(140,0,0,0.6)" stroke-width="1.2" fill="none"/>
+                <path d="M116,165 C105,162 90,163 82,167" stroke="rgba(140,0,0,0.5)" stroke-width="1" fill="none"/>
+                <path d="M116,180 C105,177 90,178 82,182" stroke="rgba(140,0,0,0.4)" stroke-width="0.8" fill="none"/>
+                <!-- Core power crystal on chest -->
+                <polygon points="80,155 74,165 80,175 86,165" fill="rgba(5,0,0,0.9)" stroke="rgba(255,0,0,0.7)" stroke-width="1.2"/>
+                <polygon points="80,158 75,165 80,172 85,165" fill="rgba(200,0,0,0.3)" filter="url(#redGlow)"/>
+                <circle cx="80" cy="165" r="3" fill="rgba(255,80,0,0.8)" filter="url(#redGlow)">
+                    <animate attributeName="opacity" values="0.6;1;0.6" dur="1.8s" repeatCount="indefinite"/>
+                </circle>
+                <!-- Shoulder pauldrons — spiked -->
+                <!-- Left pauldron -->
+                <path d="M32,118 C28,112 30,130 36,140 L52,138 C52,128 46,118 32,118Z" fill="url(#vArmour)"/>
+                <polygon points="30,115 26,108 34,110" fill="#1a0000"/>
+                <polygon points="28,122 22,116 30,120" fill="#1a0000"/>
+                <!-- Right pauldron -->
+                <path d="M128,118 C132,112 130,130 124,140 L108,138 C108,128 114,118 128,118Z" fill="url(#vArmour)"/>
+                <polygon points="130,115 134,108 126,110" fill="#1a0000"/>
+                <polygon points="132,122 138,116 130,120" fill="#1a0000"/>
+                <!-- Pauldron rivets -->
+                <circle cx="40" cy="128" r="2" fill="rgba(180,0,0,0.6)"/>
+                <circle cx="120" cy="128" r="2" fill="rgba(180,0,0,0.6)"/>
+                <!-- Belt -->
+                <rect x="46" y="198" width="68" height="9" rx="2" fill="#0f0000"/>
+                <rect x="76" y="199" width="8" height="7" rx="1" fill="#1a0000" stroke="rgba(255,0,0,0.5)" stroke-width="0.8"/>
+                <circle cx="80" cy="202" r="2" fill="rgba(255,60,0,0.7)" filter="url(#redGlow)"/>
+
+                <!-- ═══ LEFT ARM — armoured, hanging down ═══ -->
+                <path d="M44,132 C35,148 30,172 30,190 L44,194 C46,178 48,158 52,142Z"
+                      fill="url(#vArmour)" filter="url(#vDrop)"/>
+                <!-- Left gauntlet fist (closed, at side) -->
+                <rect x="26" y="188" width="18" height="14" rx="4" fill="url(#vGaunt)"/>
+                <!-- Knuckle spikes left -->
+                <polygon points="28,188 26,182 31,186" fill="#1a0000"/>
+                <polygon points="35,188 33,181 38,186" fill="#1a0000"/>
+                <polygon points="42,188 40,183 44,187" fill="#1a0000"/>
+                <!-- Gauntlet seam -->
+                <line x1="26" y1="194" x2="44" y2="194" stroke="rgba(180,0,0,0.4)" stroke-width="0.8"/>
+
+                <!-- ═══ RIGHT ARM — raised forward, crackling energy ═══ -->
+                <path d="M116,132 C122,140 130,158 134,178 L120,185 C118,165 114,148 108,136Z"
+                      fill="url(#vArmour)" filter="url(#vDrop)"/>
+                <!-- Right gauntlet raised, open palm -->
+                <path d="M118,178 L138,172 C142,170 144,175 142,180
+                         L138,192 C136,197 130,198 126,195 L118,192Z"
+                      fill="url(#vGaunt)"/>
+                <!-- Gauntlet knuckle ridges -->
+                <line x1="120" y1="181" x2="140" y2="175" stroke="rgba(180,0,0,0.4)" stroke-width="0.8"/>
+                <line x1="120" y1="186" x2="138" y2="180" stroke="rgba(180,0,0,0.3)" stroke-width="0.6"/>
+                <!-- ═ ENERGY CRACKLING FROM PALM ═ -->
+                <!-- Glow core at palm -->
+                <circle cx="136" cy="180" r="8" fill="url(#vEnergy)" filter="url(#redGlow)">
+                    <animate attributeName="r" values="7;10;7" dur="0.9s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="0.7;1;0.7" dur="0.9s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="136" cy="180" r="4" fill="#ff6600" filter="url(#redGlow)">
+                    <animate attributeName="opacity" values="0.8;1;0.8" dur="0.5s" repeatCount="indefinite"/>
+                </circle>
+                <!-- Lightning bolt strands -->
+                <path d="M136,180 L150,165 L146,170 L158,155" stroke="#ff4400" stroke-width="1.5" fill="none" stroke-linecap="round" filter="url(#redGlow)" opacity="0.9">
+                    <animate attributeName="d" values="M136,180 L150,165 L146,170 L158,155;M136,180 L152,162 L148,168 L160,152;M136,180 L150,165 L146,170 L158,155" dur="0.3s" repeatCount="indefinite"/>
+                </path>
+                <path d="M136,180 L148,172 L144,176 L154,166" stroke="#ff8800" stroke-width="1" fill="none" filter="url(#redGlow)" opacity="0.7">
+                    <animate attributeName="d" values="M136,180 L148,172 L144,176 L154,166;M136,180 L150,168 L146,174 L156,162;M136,180 L148,172 L144,176 L154,166" dur="0.25s" repeatCount="indefinite"/>
+                </path>
+                <path d="M136,180 L145,190 L140,186 L148,200" stroke="#ff2200" stroke-width="1.2" fill="none" filter="url(#redGlow)" opacity="0.8">
+                    <animate attributeName="d" values="M136,180 L145,190 L140,186 L148,200;M136,180 L147,188 L142,184 L150,198;M136,180 L145,190 L140,186 L148,200" dur="0.35s" repeatCount="indefinite"/>
+                </path>
+                <path d="M136,180 L125,168 L128,173 L118,160" stroke="#ff5500" stroke-width="1" fill="none" filter="url(#redGlow)" opacity="0.6">
+                    <animate attributeName="d" values="M136,180 L125,168 L128,173 L118,160;M136,180 L123,170 L126,175 L116,162;M136,180 L125,168 L128,173 L118,160" dur="0.4s" repeatCount="indefinite"/>
+                </path>
+                <!-- Floating energy sparks -->
+                <circle cx="152" cy="162" r="2" fill="#ff8800" filter="url(#redGlow)">
+                    <animate attributeName="opacity" values="0;1;0" dur="0.5s" repeatCount="indefinite"/>
+                    <animate attributeName="cx" values="152;154;152" dur="0.5s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="148" cy="200" r="1.5" fill="#ff4400" filter="url(#redGlow)">
+                    <animate attributeName="opacity" values="0;1;0" dur="0.4s" begin="0.2s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="118" cy="162" r="1.5" fill="#ff6600" filter="url(#redGlow)">
+                    <animate attributeName="opacity" values="0;1;0" dur="0.6s" begin="0.1s" repeatCount="indefinite"/>
+                </circle>
+
+                <!-- ═══ NECK ═══ -->
+                <rect x="73" y="112" width="14" height="20" rx="4" fill="url(#vSkin)"/>
+                <!-- Neck armour collar -->
+                <path d="M66,125 L94,125 L96,132 L64,132Z" fill="url(#vArmour)"/>
+                <path d="M66,125 L94,125" stroke="rgba(180,0,0,0.5)" stroke-width="1"/>
+
+                <!-- ═══ HEAD ═══ -->
+                <!-- Head base — pale, gaunt -->
+                <ellipse cx="80" cy="90" rx="26" ry="28" fill="url(#vSkin)" filter="url(#vDrop)"/>
+                <!-- Temple hollows (sunken, gaunt) -->
+                <ellipse cx="57" cy="88" rx="5" ry="8" fill="rgba(70,60,55,0.3)"/>
+                <ellipse cx="103" cy="88" rx="5" ry="8" fill="rgba(70,60,55,0.3)"/>
+                <!-- Cheekbones — sharp, angular -->
+                <ellipse cx="62" cy="100" rx="8" ry="5" fill="rgba(90,80,75,0.35)"/>
+                <ellipse cx="98" cy="100" rx="8" ry="5" fill="rgba(90,80,75,0.35)"/>
+                <!-- Forehead brow bone shadow -->
+                <path d="M56,78 C62,74 98,74 104,78" fill="rgba(50,40,40,0.3)"/>
+
+                <!-- ═══ HAIR — slicked back, dark ═══ -->
+                <path d="M54,70 C56,55 65,48 80,46 C95,48 104,55 106,70
+                         C104,62 94,58 80,58 C66,58 56,62 54,70Z"
+                      fill="#0a0005"/>
+                <!-- Hair widow's peak -->
+                <path d="M72,70 L80,78 L88,70 C84,65 76,65 72,70Z" fill="#0a0005"/>
+                <!-- Hair sheen -->
+                <path d="M62,56 C60,63 58,70 56,76" stroke="rgba(80,0,20,0.3)" stroke-width="1.5" fill="none"/>
+
+                <!-- ═══ SKULL HALF-MASK (lower face) ═══ -->
+                <!-- Mask plate — covers nose downward -->
+                <path d="M57,97 C57,93 59,91 62,90 L98,90 C101,91 103,93 103,97
+                         L104,118 C104,122 100,126 96,127
+                         L64,127 C60,126 56,122 56,118Z"
+                      fill="#0d0000" stroke="rgba(200,0,0,0.35)" stroke-width="1"/>
+                <!-- Mask rivets / bolts at edges -->
+                <circle cx="61" cy="94" r="2" fill="#1a0000" stroke="rgba(180,0,0,0.5)" stroke-width="0.8"/>
+                <circle cx="99" cy="94" r="2" fill="#1a0000" stroke="rgba(180,0,0,0.5)" stroke-width="0.8"/>
+                <circle cx="59" cy="115" r="1.5" fill="#1a0000" stroke="rgba(180,0,0,0.4)" stroke-width="0.7"/>
+                <circle cx="101" cy="115" r="1.5" fill="#1a0000" stroke="rgba(180,0,0,0.4)" stroke-width="0.7"/>
+                <!-- Mask nose bridge ridge -->
+                <path d="M77,92 L83,92 L84,110 L76,110Z" fill="rgba(40,0,0,0.8)"/>
+                <!-- Mask ventilation slits -->
+                <rect x="62" y="110" width="13" height="2" rx="1" fill="rgba(255,0,0,0.15)"/>
+                <rect x="62" y="114" width="10" height="2" rx="1" fill="rgba(255,0,0,0.1)"/>
+                <rect x="85" y="110" width="13" height="2" rx="1" fill="rgba(255,0,0,0.15)"/>
+                <rect x="87" y="114" width="10" height="2" rx="1" fill="rgba(255,0,0,0.1)"/>
+                <!-- Skull mouth grin etched into mask -->
+                <path d="M64,120 C68,117 74,116 80,116 C86,116 92,117 96,120"
+                      stroke="rgba(255,0,0,0.5)" stroke-width="1" fill="none"/>
+                <!-- Teeth marks etched -->
+                <line x1="68" y1="118" x2="68" y2="123" stroke="rgba(200,0,0,0.4)" stroke-width="1"/>
+                <line x1="72" y1="117" x2="72" y2="123" stroke="rgba(200,0,0,0.4)" stroke-width="1"/>
+                <line x1="76" y1="116" x2="76" y2="122" stroke="rgba(200,0,0,0.4)" stroke-width="1"/>
+                <line x1="80" y1="116" x2="80" y2="122" stroke="rgba(200,0,0,0.3)" stroke-width="1"/>
+                <line x1="84" y1="116" x2="84" y2="122" stroke="rgba(200,0,0,0.4)" stroke-width="1"/>
+                <line x1="88" y1="117" x2="88" y2="123" stroke="rgba(200,0,0,0.4)" stroke-width="1"/>
+                <line x1="92" y1="118" x2="92" y2="123" stroke="rgba(200,0,0,0.4)" stroke-width="1"/>
+                <!-- Mask jaw ridge -->
+                <path d="M56,118 C58,126 70,130 80,130 C90,130 102,126 104,118"
+                      stroke="rgba(140,0,0,0.4)" stroke-width="1" fill="none"/>
+
+                <!-- ═══ EYES — glowing crimson, no whites ═══ -->
+                <!-- Eye socket shadows (deep set) -->
+                <ellipse cx="68" cy="84" rx="10" ry="8" fill="rgba(10,0,0,0.9)"/>
+                <ellipse cx="92" cy="84" rx="10" ry="8" fill="rgba(10,0,0,0.9)"/>
+                <!-- Iris glow left -->
+                <circle cx="68" cy="84" r="7" fill="rgba(150,0,0,0.6)" filter="url(#eyeBloom)"/>
+                <circle cx="68" cy="84" r="5" fill="url(#vEyeL)" filter="url(#eyeBloom)">
+                    <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="68" cy="84" r="3" fill="#ff5500" filter="url(#redGlow)">
+                    <animate attributeName="opacity" values="0.7;1;0.7" dur="1.5s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="68" cy="84" r="1.5" fill="#ffaa00"/>
+                <!-- Iris glow right -->
+                <circle cx="92" cy="84" r="7" fill="rgba(150,0,0,0.6)" filter="url(#eyeBloom)"/>
+                <circle cx="92" cy="84" r="5" fill="url(#vEyeL)" filter="url(#eyeBloom)">
+                    <animate attributeName="r" values="4;6;4" dur="2s" begin="0.3s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="92" cy="84" r="3" fill="#ff5500" filter="url(#redGlow)">
+                    <animate attributeName="opacity" values="0.7;1;0.7" dur="1.5s" begin="0.3s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="92" cy="84" r="1.5" fill="#ffaa00"/>
+                <!-- Eye socket rims — sharp brow bone -->
+                <path d="M58,80 C62,75 74,75 78,80" stroke="#1a0000" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                <path d="M82,80 C86,75 98,75 102,80" stroke="#1a0000" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+                <!-- ═══ BATTLE SCAR — across left cheek ═══ -->
+                <path d="M55,95 C58,91 63,93 66,96 C63,94 59,93 55,95Z"
+                      fill="rgba(120,20,20,0.7)"/>
+                <path d="M55,95 L66,96" stroke="rgba(200,40,40,0.6)" stroke-width="1.2" stroke-linecap="round"/>
+                <!-- Scar secondary line -->
+                <path d="M57,98 L65,100" stroke="rgba(160,30,30,0.4)" stroke-width="0.8" stroke-linecap="round"/>
+
+                <!-- ═══ DARK ENERGY AURA around body ═══ -->
+                <ellipse cx="80" cy="160" rx="55" ry="75" fill="none"
+                         stroke="rgba(180,0,0,0.06)" stroke-width="8" filter="url(#redGlow)">
+                    <animate attributeName="rx" values="55;60;55" dur="3s" repeatCount="indefinite"/>
+                    <animate attributeName="ry" values="75;80;75" dur="3s" repeatCount="indefinite"/>
+                </ellipse>
+                <ellipse cx="80" cy="160" rx="48" ry="66" fill="none"
+                         stroke="rgba(200,0,0,0.04)" stroke-width="5" filter="url(#redGlow)">
+                    <animate attributeName="rx" values="48;53;48" dur="2.5s" begin="0.5s" repeatCount="indefinite"/>
+                </ellipse>
+
+                <!-- ═══ FLOATING DARK PARTICLES ═══ -->
+                <circle cx="18" cy="120" r="2" fill="rgba(255,0,0,0.5)" filter="url(#redGlow)">
+                    <animate attributeName="cy" values="120;100;120" dur="3.5s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="0.3;0.9;0.3" dur="3.5s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="142" cy="140" r="1.5" fill="rgba(255,80,0,0.5)" filter="url(#redGlow)">
+                    <animate attributeName="cy" values="140;115;140" dur="4s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="0.2;0.8;0.2" dur="4s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="25" cy="175" r="1.5" fill="rgba(200,0,0,0.6)" filter="url(#redGlow)">
+                    <animate attributeName="cy" values="175;155;175" dur="2.8s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="135" cy="200" r="2" fill="rgba(255,40,0,0.5)" filter="url(#redGlow)">
+                    <animate attributeName="cy" values="200;178;200" dur="3.2s" begin="0.8s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" values="0.3;1;0.3" dur="3.2s" repeatCount="indefinite"/>
+                </circle>
+                <!-- Floating rune fragments -->
+                <text x="10" y="155" font-family="monospace" font-size="7" fill="rgba(200,0,0,0.35)" filter="url(#redGlow)">ᛞ</text>
+                <text x="140" y="170" font-family="monospace" font-size="6" fill="rgba(200,0,0,0.3)" filter="url(#redGlow)">ᚺ</text>
+                <text x="15" y="200" font-family="monospace" font-size="6" fill="rgba(180,0,0,0.3)" filter="url(#redGlow)">ᛚ</text>
+            </svg>
+        </div>
+
+        <h1 data-text="BLACK SYSTEM">BLACK SYSTEM</h1>
+        <div class="tagline">[ ACCESSING THE UNDERWORLD NETWORK v3.0 ]</div>
+
+        <div class="threat-meter">
+            <span>THREAT LEVEL</span>
+            <div class="threat-bar"><div class="threat-fill"></div></div>
+            <span>87%</span>
+        </div>
+
+        <div class="sound-viz" id="sound-viz"></div>
+    </header>
+
+    <!-- ═══ TERMINAL + MINI TEAM ═══ -->
+    <div class="main-content">
+        <div class="panel panel-glow">
+            <div class="hex-bg"></div>
+            <h2><i class="fas fa-terminal" style="margin-right:8px"></i>System Terminal</h2>
+            <div class="code-container" id="code-display"></div>
+        </div>
+        <div class="panel panel-glow">
+            <div class="hex-bg"></div>
+            <h2><i class="fas fa-microphone-alt" style="margin-right:8px"></i>Voice Command Log</h2>
+            <div class="code-container" id="voice-log">
+                <div class="code-line info">> Voice engine initialized</div>
+                <div class="code-line success">> Web Speech API: ONLINE</div>
+                <div class="code-line purple">> 6 voice profiles loaded</div>
+                <div class="code-line warn">> Select a voice and click SPEAK</div>
+                <div class="code-line">> Or click an operative card to hear them</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ VOICE CONTROL PANEL ═══ -->
+    <div class="voice-panel">
+        <h2>⟩ VOICE COMMAND CENTER ⟨</h2>
+        <div class="voice-grid" id="voice-grid">
+            <!-- filled by JS -->
+        </div>
+        <div class="voice-controls">
+            <button class="vc-btn" id="vc-speak">▶ SPEAK</button>
+            <button class="vc-btn stop" id="vc-stop">■ STOP</button>
+            <button class="vc-btn" id="vc-announce">⚡ SYSTEM ANNOUNCE</button>
+            <button class="vc-btn" id="vc-warn">⚠ THREAT ALERT</button>
+            <span class="speech-status" id="speech-status">STANDBY</span>
+        </div>
+    </div>
+
+    <!-- ═══ OPERATIVE DOSSIERS ═══ -->
+    <div class="operatives-section">
+        <h2>⬡ OPERATIVE DOSSIERS — CLASSIFIED ⬡</h2>
+        <div class="operatives-grid" id="operatives-grid">
+            <!-- filled by JS -->
+        </div>
+    </div>
+
+    <!-- ═══ AI CORE STATS ═══ -->
+    <div class="ai-section">
+        <h2>⬡ AI CORE INTELLIGENCE METRICS ⬡</h2>
+        <div class="ai-stats">
+            <div class="ai-stat">
+                <div class="ai-stat-value"><span class="stat-counter" data-target="99.7">0</span>%</div>
+                <div class="ai-stat-label">SYSTEM INTEGRITY</div>
+            </div>
+            <div class="ai-stat">
+                <div class="ai-stat-value"><span class="stat-counter" data-target="4096">0</span></div>
+                <div class="ai-stat-label">ACTIVE NODES</div>
+            </div>
+            <div class="ai-stat">
+                <div class="ai-stat-value"><span class="stat-counter" data-target="256">0</span>-BIT</div>
+                <div class="ai-stat-label">ENCRYPTION KEY</div>
+            </div>
+            <div class="ai-stat">
+                <div class="ai-stat-value" id="intrusion-count">0</div>
+                <div class="ai-stat-label">INTRUSIONS BLOCKED</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ SOCIAL ═══ -->
+    <div class="social-section">
+        <h2>⟩ COMMANDER ACCESS POINTS ⟨</h2>
+        <div class="social-grid">
+            <div class="social-btn" data-type="telegram"><span class="social-icon"><i class="fab fa-telegram"></i></span><div class="social-name">Telegram</div><span class="social-handle">@ioint</span></div>
+            <div class="social-btn" data-type="instagram"><span class="social-icon"><i class="fab fa-instagram"></i></span><div class="social-name">Instagram</div><span class="social-handle">f</span></div>
+            <div class="social-btn" data-type="tiktok"><span class="social-icon"><i class="fab fa-tiktok"></i></span><div class="social-name">TikTok</div><span class="social-handle">f</span></div>
+            <div class="social-btn" data-type="github"><span class="social-icon"><i class="fab fa-github"></i></span><div class="social-name">GitHub</div><span class="social-handle">ru266</span></div>
+            <div class="social-btn dark-web" data-type="darkweb"><span class="social-icon"><i class="fas fa-skull"></i></span><div class="social-name">Dark Web</div><span class="social-handle">Sir.Mahdi.onion</span></div>
+        </div>
+    </div>
+
+    <footer>
+        <p>⚠ WARNING: UNAUTHORIZED ACCESS WILL BE TRACED AND PUNISHED ⚠</p>
+        <p>SYSTEM STATUS: <span class="glow-text">ACTIVE</span> · BLACK SYSTEM v3.0 · ALL CONNECTIONS ENCRYPTED</p>
+    </footer>
+</div>
+
+<div class="notification" id="notification">System initialized</div>
+<div class="overlay" id="overlay"></div>
+<div class="access-portal" id="access-portal">
+    <div class="portal-header"><h2>UNDERWORLD ACCESS PORTAL</h2></div>
+    <div class="portal-content" id="portal-content">
+        <span>> Initializing secure connection...</span><br>
+        <span>> Establishing encrypted tunnel...</span><br>
+        <span>> Verifying credentials...</span><br>
+        > Connection to <span id="portal-handle" style="color:var(--neon-gold)"></span> established<br>
+        > Select an action below
+    </div>
+    <div class="portal-actions">
+        <button class="portal-btn" id="portal-copy">⊕ Copy Handle</button>
+        <button class="portal-btn" id="portal-visit">↗ Visit Platform</button>
+        <button class="portal-btn danger" id="portal-close">✕ Close Portal</button>
+    </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// DATA — OPERATIVE DOSSIERS
+// ════════════════════════════════════════════
+const operatives = [
+    {
+        codename: "Milano",
+        rank: "ASSISTANT COMMANDER",
+        specialty: "Software Engineering",
+        bio: "Elite full-stack architect specializing in distributed systems and covert network infrastructure. Designed the core Black System architecture with redundant failsafe nodes across 12 dark web servers.",
+        skills: [
+            { name: "Full-Stack Dev", pct: 94, type: "c" },
+            { name: "System Architecture", pct: 91, type: "g" },
+            { name: "Network Design", pct: 87, type: "r" },
+            { name: "Cryptography", pct: 80, type: "c" }
+        ],
+        tags: ["React", "Node.js", "Rust", "Docker", "Zero-Trust"],
+        tagTypes: ["c", "g", "r", "p", "g"],
+        clearance: "OMEGA",
+        icon: "fas fa-terminal",
+        voiceLine: "Milano online. All systems nominal. The architecture holds.",
+        avatarColor: "#00f5ff"
+    },
+    {
+        codename: "Tom",
+        rank: "ASSISTANT COMMANDER",
+        specialty: "Software Engineering",
+        bio: "Backend systems engineer with expertise in low-latency covert APIs and obfuscated data pipelines. Responsible for Black System's real-time intelligence aggregation layer.",
+        skills: [
+            { name: "Backend Systems", pct: 96, type: "c" },
+            { name: "API Security", pct: 89, type: "g" },
+            { name: "Data Pipelines", pct: 85, type: "r" },
+            { name: "Obfuscation", pct: 88, type: "p" }
+        ],
+        tags: ["Python", "Go", "gRPC", "Kafka", "eBPF"],
+        tagTypes: ["g", "c", "r", "p", "gold"],
+        clearance: "OMEGA",
+        icon: "fas fa-code",
+        voiceLine: "Tom reporting in. Pipelines are clean, no anomalies detected.",
+        avatarColor: "#bf00ff"
+    },
+    {
+        codename: "Nairoz",
+        rank: "OPERATIVE",
+        specialty: "Cybersecurity Engineering",
+        bio: "Penetration testing specialist and red-team commander. Holds OSCP, CEH and CISSP certifications. Expert in zero-day vulnerability research and exploit chain development for mission-critical operations.",
+        skills: [
+            { name: "Penetration Testing", pct: 97, type: "r" },
+            { name: "Exploit Development", pct: 93, type: "r" },
+            { name: "OSINT", pct: 88, type: "c" },
+            { name: "Malware Analysis", pct: 84, type: "p" }
+        ],
+        tags: ["Metasploit", "Burp Suite", "OSCP", "CVE Research", "Red Team"],
+        tagTypes: ["r", "r", "gold", "p", "c"],
+        clearance: "HIGH",
+        icon: "fas fa-shield-alt",
+        voiceLine: "Nairoz here. Perimeter secure. No unauthorized access detected.",
+        avatarColor: "#ff003c"
+    },
+    {
+        codename: "Istabraq",
+        rank: "OPERATIVE",
+        specialty: "Reverse Engineering",
+        bio: "Binary analyst and malware dissection expert. Specializes in decompiling obfuscated executables, firmware analysis, and building custom debuggers. Has reverse-engineered over 400 malware samples.",
+        skills: [
+            { name: "Binary Analysis", pct: 98, type: "r" },
+            { name: "Firmware Hacking", pct: 90, type: "p" },
+            { name: "Disassembly", pct: 95, type: "c" },
+            { name: "Anti-Forensics", pct: 82, type: "g" }
+        ],
+        tags: ["IDA Pro", "Ghidra", "x86/ARM", "JTAG", "Custom Debuggers"],
+        tagTypes: ["r", "p", "c", "g", "gold"],
+        clearance: "HIGH",
+        icon: "fas fa-bug",
+        voiceLine: "Istabraq online. Every binary has a secret. I find them.",
+        avatarColor: "#ffd700"
+    },
+    {
+        codename: "Miami",
+        rank: "OPERATIVE",
+        specialty: "Social Engineering",
+        bio: "Master of human-factor exploitation and psychological manipulation. Architect of multi-stage phishing campaigns, vishing operations, and physical intrusion scenarios. Fluent in 5 languages.",
+        skills: [
+            { name: "Phishing Campaigns", pct: 96, type: "r" },
+            { name: "Psychological Ops", pct: 94, type: "p" },
+            { name: "Physical Intrusion", pct: 87, type: "c" },
+            { name: "Cover Identity", pct: 91, type: "g" }
+        ],
+        tags: ["Vishing", "Pretexting", "HUMINT", "Recon", "5 Languages"],
+        tagTypes: ["r", "p", "c", "g", "gold"],
+        clearance: "HIGH",
+        icon: "fas fa-brain",
+        voiceLine: "Miami active. The weakest firewall is always the human mind.",
+        avatarColor: "#ff6ec7"
+    },
+    {
+        codename: "Yagamei",
+        rank: "OPERATIVE",
+        specialty: "Software Engineering",
+        bio: "Full-spectrum developer specializing in offensive tool creation, custom C2 frameworks, and weaponized automation. Architect of the Black System dashboard and AI monitoring subsystem.",
+        skills: [
+            { name: "Tool Development", pct: 93, type: "g" },
+            { name: "C2 Frameworks", pct: 89, type: "r" },
+            { name: "AI Integration", pct: 85, type: "c" },
+            { name: "Automation", pct: 92, type: "p" }
+        ],
+        tags: ["C/C++", "Python", "Cobalt Strike", "AI/ML", "Custom C2"],
+        tagTypes: ["r", "g", "c", "p", "gold"],
+        clearance: "HIGH",
+        icon: "fas fa-laptop-code",
+        voiceLine: "Yagamei connected. Tools are sharp. Ready for deployment.",
+        avatarColor: "#00ff41"
+    },
+    {
+        codename: "Haager",
+        rank: "OPERATIVE",
+        specialty: "Cybersecurity Technologies",
+        bio: "Advanced threat hunter and SOC architect. Specializes in threat intelligence, adversarial simulation, and building next-generation detection systems that remain invisible to automated scanners.",
+        skills: [
+            { name: "Threat Hunting", pct: 95, type: "r" },
+            { name: "Threat Intel", pct: 91, type: "c" },
+            { name: "SOC Engineering", pct: 88, type: "g" },
+            { name: "Stealth Ops", pct: 93, type: "p" }
+        ],
+        tags: ["SIEM", "MITRE ATT&CK", "Splunk", "YARA", "Dark Web Intel"],
+        tagTypes: ["c", "p", "g", "r", "gold"],
+        clearance: "HIGH",
+        icon: "fas fa-user-secret",
+        voiceLine: "Haager standing by. Threat intelligence updated. Shadows are clear.",
+        avatarColor: "#00f5ff"
+    }
+];
+
+// ════════════════════════════════════════════
+// VOICE PROFILES
+// ════════════════════════════════════════════
+const voiceProfiles = [
+    { id: "system",  name: "SYSTEM AI",    icon: "🤖", desc: "Robotic • Deep pitch",   pitch: 0.5, rate: 0.8,  vol: 0.9 },
+    { id: "commander", name: "COMMANDER", icon: "👁",  desc: "Authority • Medium",     pitch: 0.8, rate: 0.85, vol: 0.9 },
+    { id: "operator", name: "OPERATOR",   icon: "🎙",  desc: "Clear • Neutral",        pitch: 1.0, rate: 0.95, vol: 0.85 },
+    { id: "shadow",  name: "SHADOW",      icon: "🕶",  desc: "Whisper • Fast",         pitch: 1.2, rate: 1.15, vol: 0.75 },
+    { id: "cipher",  name: "CIPHER",      icon: "⬡",   desc: "High • Synthetic",       pitch: 1.6, rate: 1.0,  vol: 0.8 },
+    { id: "wraith",  name: "WRAITH",      icon: "💀",  desc: "Ultra-deep • Slow",      pitch: 0.2, rate: 0.7,  vol: 1.0 }
+];
+
+let activeVoiceId = "system";
+let currentUtterance = null;
+
+// ════════════════════════════════════════════
+// WEB AUDIO ENGINE (synth sounds)
+// ════════════════════════════════════════════
+const AudioEngine = (() => {
+    let ctx = null, masterGain, muted = false;
+    function init() {
+        if (ctx) return;
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = ctx.createGain();
+        masterGain.gain.value = 0.16;
+        masterGain.connect(ctx.destination);
+    }
+    function tone(freq, type='square', dur=0.1, vol=0.5) {
+        if (muted || !ctx) return;
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = type; o.frequency.value = freq;
+        g.gain.setValueAtTime(vol, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+        o.connect(g); g.connect(masterGain);
+        o.start(); o.stop(ctx.currentTime + dur);
+    }
+    return {
+        init,
+        typing: () => { const fs=[220,260,300,180,200]; tone(fs[Math.floor(Math.random()*fs.length)],'square',0.05,0.25); },
+        hover:  () => tone(800,'sine',0.07,0.12),
+        click:  () => { tone(1200,'square',0.04,0.35); setTimeout(()=>tone(600,'square',0.06,0.18),40); },
+        open:   () => [300,400,600].forEach((f,i)=>setTimeout(()=>tone(f,'sawtooth',0.15,0.28),i*80)),
+        close:  () => [600,400,200].forEach((f,i)=>setTimeout(()=>tone(f,'sawtooth',0.12,0.2),i*60)),
+        boot:   () => [100,150,200,300,400,600,800].forEach((f,i)=>setTimeout(()=>tone(f,'sine',0.2,0.28),i*120)),
+        warn:   () => [880,660,880,660].forEach((f,i)=>setTimeout(()=>tone(f,'square',0.15,0.25),i*150)),
+        toggleMute: () => { muted=!muted; return muted; },
+        isMuted: () => muted
+    };
+})();
+
+// ════════════════════════════════════════════
+// SPEECH ENGINE (Web Speech API)
+// ════════════════════════════════════════════
+const SpeechEngine = (() => {
+    if (!window.speechSynthesis) return { speak(){}, stop(){} };
+
+    function getProfile() { return voiceProfiles.find(v=>v.id===activeVoiceId) || voiceProfiles[0]; }
+
+    function speak(text, onEnd) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        const p = getProfile();
+        utter.pitch = p.pitch;
+        utter.rate  = p.rate;
+        utter.volume= p.vol;
+
+        // Try to find a browser voice
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length) {
+            // prefer English voice
+            const en = voices.find(v=>v.lang.startsWith('en'));
+            if (en) utter.voice = en;
+        }
+
+        const statusEl = document.getElementById('speech-status');
+        utter.onstart = () => { if(statusEl){ statusEl.textContent='SPEAKING'; statusEl.classList.add('speaking'); } logVoice(`[${p.name}] "${text.slice(0,50)}${text.length>50?'…':''}"`); };
+        utter.onend   = () => { if(statusEl){ statusEl.textContent='STANDBY'; statusEl.classList.remove('speaking'); } if(onEnd) onEnd(); };
+        utter.onerror = () => { if(statusEl){ statusEl.textContent='ERROR'; statusEl.classList.remove('speaking'); } };
+
+        currentUtterance = utter;
+        window.speechSynthesis.speak(utter);
+    }
+
+    function stop() {
+        window.speechSynthesis.cancel();
+        const s = document.getElementById('speech-status');
+        if(s){ s.textContent='STOPPED'; s.classList.remove('speaking'); }
+    }
+
+    return { speak, stop };
+})();
+
+function logVoice(text) {
+    const log = document.getElementById('voice-log');
+    if (!log) return;
+    const line = document.createElement('div');
+    line.className = 'code-line purple';
+    line.textContent = '> ' + text;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+}
+
+// ════════════════════════════════════════════
+// RENDER VOICE PROFILES
+// ════════════════════════════════════════════
+function renderVoiceGrid() {
+    const grid = document.getElementById('voice-grid');
+    voiceProfiles.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'voice-option' + (p.id === activeVoiceId ? ' active' : '');
+        div.dataset.id = p.id;
+        div.innerHTML = `<div class="voice-icon">${p.icon}</div><div class="voice-name">${p.name}</div><div class="voice-desc">${p.desc}</div>`;
+        div.addEventListener('click', () => {
+            AudioEngine.click();
+            activeVoiceId = p.id;
+            document.querySelectorAll('.voice-option').forEach(el=>el.classList.remove('active'));
+            div.classList.add('active');
+            SpeechEngine.speak(`Voice profile ${p.name} activated.`);
+            logVoice(`Profile switched to: ${p.name}`);
+        });
+        div.addEventListener('mouseenter', () => AudioEngine.hover());
+        grid.appendChild(div);
+    });
+}
+
+// ════════════════════════════════════════════
+// RENDER OPERATIVE CARDS
+// ════════════════════════════════════════════
+function renderOperatives() {
+    const grid = document.getElementById('operatives-grid');
+    operatives.forEach(op => {
+        const card = document.createElement('div');
+        card.className = 'operative-card';
+
+        const skillsHTML = op.skills.map(s => `
+            <div class="skill-row">
+                <span class="skill-label">${s.name}</span>
+                <div class="skill-track"><div class="skill-fill ${s.type}" data-pct="${s.pct}" style="width:0%"></div></div>
+                <span class="skill-pct">${s.pct}%</span>
+            </div>`).join('');
+
+        const tagsHTML = op.tags.map((t,i)=>`<span class="tag ${op.tagTypes[i]}">${t}</span>`).join('');
+
+        const cl = op.clearance === 'OMEGA' ? 'high' : 'med';
+
+        card.innerHTML = `
+            <div class="card-glow-line"></div>
+            <div class="card-header">
+                <div class="card-avatar">
+                    <svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="30" cy="30" r="28" fill="rgba(10,0,25,0.9)"/>
+                        <circle cx="30" cy="22" r="10" fill="rgba(30,0,50,0.8)" stroke="${op.avatarColor}" stroke-width="1.5" stroke-opacity="0.5"/>
+                        <path d="M14,48 C14,38 22,34 30,34 C38,34 46,38 46,48" fill="rgba(20,0,40,0.8)" stroke="${op.avatarColor}" stroke-width="1" stroke-opacity="0.4"/>
+                        <circle cx="30" cy="22" r="4" fill="${op.avatarColor}" opacity="0.9" filter="url(#glowF)"/>
+                        <circle cx="30" cy="22" r="6" fill="none" stroke="${op.avatarColor}" stroke-width="0.8" opacity="0.5"/>
+                    </svg>
+                    <div class="avatar-ring"></div>
+                </div>
+                <div class="card-identity">
+                    <h3>${op.codename.toUpperCase()}</h3>
+                    <div class="rank">${op.rank}</div>
+                    <div class="specialty">${op.specialty}</div>
+                </div>
+                <div class="card-online"><span class="online-dot"></span></div>
+            </div>
+            <div class="card-body">
+                <div class="card-bio">${op.bio}</div>
+                <div class="skill-bars">${skillsHTML}</div>
+                <div class="card-tags">${tagsHTML}</div>
+            </div>
+            <div class="card-footer">
+                <button class="voice-btn" data-voice="${op.voiceLine}">▶ HEAR VOICE</button>
+                <span class="clearance-badge ${cl}">CLEARANCE: ${op.clearance}</span>
+            </div>`;
+
+        card.addEventListener('mouseenter', () => AudioEngine.hover());
+        card.querySelector('.voice-btn').addEventListener('click', e => {
+            e.stopPropagation();
+            AudioEngine.click();
+            const line = op.voiceLine;
+            SpeechEngine.speak(line);
+            showNotification(`> ${op.codename}: "${line.slice(0,45)}…"`, '');
+        });
+
+        grid.appendChild(card);
+    });
+}
+
+// Animate skill bars on scroll (IntersectionObserver)
+function animateSkillBars() {
+    const bars = document.querySelectorAll('.skill-fill');
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const bar = entry.target;
+                bar.style.width = bar.dataset.pct + '%';
+                observer.unobserve(bar);
+            }
+        });
+    }, { threshold: 0.3 });
+    bars.forEach(b => observer.observe(b));
+}
+
+// ════════════════════════════════════════════
+// MATRIX RAIN
+// ════════════════════════════════════════════
+(function() {
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx = canvas.getContext('2d');
+    let drops = [];
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*()_+{}[]|あいうえお漢字システム';
+    function resize() {
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        const cols = Math.floor(canvas.width / 14);
+        drops = Array.from({length:cols}, ()=>Math.random()*-canvas.height/14);
+    }
+    function draw() {
+        ctx.fillStyle = 'rgba(5,0,8,0.05)';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        drops.forEach((y,i) => {
+            const c = i%5;
+            ctx.fillStyle = c===0?'#00ff41':c===1?'#00f5ff':c===2?'#bf00ff':c===3?'#ff003c':'#ffd700';
+            ctx.font = "13px 'Share Tech Mono',monospace";
+            ctx.fillText(chars[Math.floor(Math.random()*chars.length)], i*14, y*14);
+            if (y*14 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+            drops[i] += 0.6;
+        });
+    }
+    resize(); window.addEventListener('resize', resize);
+    setInterval(draw, 60);
+})();
+
+// ════════════════════════════════════════════
+// CURSOR + TRAIL
+// ════════════════════════════════════════════
+(function() {
+    const cursor = document.getElementById('cursor'), dot = document.getElementById('cursor-dot');
+    const trails = [];
+    for (let i=0;i<8;i++) {
+        const t = document.createElement('div'); t.className='trail';
+        t.style.cssText=`width:${6-i*.5}px;height:${6-i*.5}px;background:hsl(${180+i*20},100%,60%);opacity:0`;
+        document.body.appendChild(t); trails.push({el:t,x:0,y:0});
+    }
+    let mx=0, my=0;
+    document.addEventListener('mousemove', e => {
+        mx=e.clientX; my=e.clientY;
+        cursor.style.left=mx+'px'; cursor.style.top=my+'px';
+        dot.style.left=mx+'px'; dot.style.top=my+'px';
+    });
+    document.addEventListener('mousedown',()=>cursor.classList.add('clicked'));
+    document.addEventListener('mouseup',()=>cursor.classList.remove('clicked'));
+    function anim() {
+        let px=mx,py=my;
+        trails.forEach((t,i)=>{ const d=.3+i*.05; t.x+=(px-t.x)*d; t.y+=(py-t.y)*d; t.el.style.left=t.x+'px'; t.el.style.top=t.y+'px'; t.el.style.opacity=(1-i/8)*.45; px=t.x; py=t.y; });
+        requestAnimationFrame(anim);
+    } anim();
+})();
+
+// ════════════════════════════════════════════
+// CLOCK + IP
+// ════════════════════════════════════════════
+setInterval(()=>document.getElementById('live-clock').textContent=new Date().toLocaleTimeString(),1000);
+document.getElementById('live-clock').textContent=new Date().toLocaleTimeString();
+const ipEl=document.getElementById('random-ip');
+function newIP(){return Array.from({length:4},()=>Math.floor(Math.random()*256)).join('.')}
+ipEl.textContent=newIP(); setInterval(()=>ipEl.textContent=newIP(),5000);
+
+// ════════════════════════════════════════════
+// SOUND VISUALIZER
+// ════════════════════════════════════════════
+(function(){
+    const viz=document.getElementById('sound-viz');
+    for(let i=0;i<30;i++){
+        const b=document.createElement('div'); b.className='viz-bar';
+        const h=Math.random()*28+5, d=Math.random()*.5+.3;
+        b.style.setProperty('--h',h+'px'); b.style.setProperty('--dur',d+'s');
+        b.style.animationDelay=Math.random()*.5+'s'; viz.appendChild(b);
+    }
+})();
+
+// ════════════════════════════════════════════
+// TERMINAL
+// ════════════════════════════════════════════
+const termLines = [
+    {t:"> INITIALIZING BLACK SYSTEM NETWORK v3.0...",c:"success"},
+    {t:"> CONNECTING TO UNDERWORLD SERVERS...",c:"info"},
+    {t:"> QUANTUM ENCRYPTION LAYER: ACTIVATING...",c:"purple"},
+    {t:"> WARNING: SYSTEM ACCESS RESTRICTED",c:"warn"},
+    {t:"> AUTHENTICATING USER: **[REDACTED]**",c:""},
+    {t:"> BIOMETRIC SCAN: RETINAL + DNA CONFIRMED",c:"success"},
+    {t:"> 7 OPERATIVE DOSSIERS LOADED",c:"info"},
+    {t:"> NEURAL NETWORK: 4096 ACTIVE NODES",c:"purple"},
+    {t:"> VOICE ENGINE: 6 PROFILES ONLINE",c:"success"},
+    {t:"> DATA ENCRYPTION: AES-256-GCM + KYBER-1024",c:"success"},
+    {t:"> FIREWALL: QUANTUM-RESISTANT ACTIVE",c:"success"},
+    {t:"> AI CORE INTELLIGENCE: ONLINE",c:"info"},
+    {t:"> DARK WEB ROUTING: TOR+I2P HYBRID ACTIVE",c:"purple"},
+    {t:"> ⬡ SYSTEM v3.0 READY — AWAITING COMMANDS ⬡",c:"success"},
+];
+function runTerminal() {
+    const d=document.getElementById('code-display'); let i=0;
+    function next(){
+        if(i>=termLines.length) return;
+        const {t,c}=termLines[i];
+        const line=document.createElement('div'); line.className='code-line'; if(c) line.classList.add(c);
+        let ci=0;
+        const timer=setInterval(()=>{
+            line.textContent=t.slice(0,ci+1);
+            if(ci<t.length-1) AudioEngine.typing();
+            ci++;
+            if(ci>=t.length){ clearInterval(timer); if(i===termLines.length-1){const cur=document.createElement('span');cur.className='terminal-cursor';line.appendChild(cur);} i++; setTimeout(next,180); }
+            d.scrollTop=d.scrollHeight;
+        },18);
+        d.appendChild(line);
+    }
+    next();
+}
+
+// ════════════════════════════════════════════
+// AI STATS COUNTERS
+// ════════════════════════════════════════════
+function animateCounters() {
+    document.querySelectorAll('.stat-counter').forEach(el => {
+        const target=parseFloat(el.dataset.target), isFloat=target%1!==0;
+        let cur=0; const inc=target/80;
+        const t=setInterval(()=>{ cur+=inc; if(cur>=target){cur=target;clearInterval(t);} el.textContent=isFloat?cur.toFixed(1):Math.floor(cur); },25);
+    });
+}
+let intrusions=0;
+setInterval(()=>{ if(Math.random()>.65){intrusions++; const el=document.getElementById('intrusion-count'); if(el)el.textContent=intrusions;} },2000);
+
+// ════════════════════════════════════════════
+// NOTIFICATIONS
+// ════════════════════════════════════════════
+function showNotification(msg, type='') {
+    const n=document.getElementById('notification');
+    n.textContent=msg; n.className='notification'; if(type) n.classList.add(type); n.classList.add('show');
+    if(type==='warn'||type==='danger') AudioEngine.warn();
+    setTimeout(()=>n.classList.remove('show'),3400);
+}
+
+// ════════════════════════════════════════════
+// PORTAL
+// ════════════════════════════════════════════
+let cHandle='',cType='';
+function openPortal(type,handle){ cHandle=handle; cType=type; document.getElementById('portal-handle').textContent=handle; document.getElementById('overlay').classList.add('active'); document.getElementById('access-portal').classList.add('open'); AudioEngine.open(); showNotification(`> Accessing ${type} portal...`); }
+function closePortal(){ document.getElementById('overlay').classList.remove('active'); document.getElementById('access-portal').classList.remove('open'); AudioEngine.close(); }
+function copyHandle(){ navigator.clipboard.writeText(cHandle).then(()=>{ showNotification(`> Copied: ${cHandle}`); AudioEngine.click(); }); }
+function visitPlatform() {
+    let url='';
+    switch(cType){ case 'telegram': url=`https://t.me/${cHandle.replace('@','')}`; break; case 'instagram': url=`https://instagram.com/${cHandle}`; break; case 'tiktok': url=`https://tiktok.com/@${cHandle}`; break; case 'github': url=`https://github.com/${cHandle}`; break; case 'darkweb': showNotification('> Dark web requires Tor browser','warn'); return; }
+    showNotification(`> Redirecting to ${cType}...`); setTimeout(()=>window.open(url,'_blank'),900);
+}
+
+// ════════════════════════════════════════════
+// SYSTEM ANNOUNCEMENTS (voice lines)
+// ════════════════════════════════════════════
+const sysAnnouncements = [
+    "Black System version 3 point 0 is now fully operational. All operative dossiers have been loaded. Voice engine is active.",
+    "Security perimeter check complete. All 7 operatives are online. No unauthorized access detected.",
+    "Threat intelligence updated. Quantum encryption layer is holding. Network stability is nominal.",
+];
+const threatAlerts = [
+    "Warning. Unknown entity scanning port 443. Automated countermeasures engaged.",
+    "Attention. Suspicious packet flood detected on node 17. Firewall rules updated. Intrusion blocked.",
+    "Alert. Zero-day signature identified in traffic stream. Quarantine protocol activated immediately.",
+];
+let annIdx=0, thrIdx=0;
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+window.addEventListener('load', () => {
+    document.addEventListener('click', ()=>AudioEngine.init(), {once:true});
+    document.addEventListener('keydown', ()=>AudioEngine.init(), {once:true});
+
+    renderVoiceGrid();
+    renderOperatives();
+    animateSkillBars();
+
+    // Sound toggle
+    const sb=document.getElementById('sound-toggle');
+    sb.addEventListener('click',()=>{ AudioEngine.init(); const m=AudioEngine.toggleMute(); sb.classList.toggle('muted',m); sb.querySelector('i').className=m?'fas fa-volume-mute':'fas fa-volume-up'; showNotification(m?'> Sound: MUTED':'> Sound: ACTIVE'); });
+
+    // Social buttons
+    document.querySelectorAll('.social-btn').forEach(btn=>{
+        btn.addEventListener('mouseenter',()=>AudioEngine.hover());
+        btn.addEventListener('click',()=>{ AudioEngine.click(); openPortal(btn.dataset.type, btn.querySelector('.social-handle').textContent.trim()); });
+    });
+
+    // Portal
+    document.getElementById('portal-copy').addEventListener('click',copyHandle);
+    document.getElementById('portal-visit').addEventListener('click',visitPlatform);
+    document.getElementById('portal-close').addEventListener('click',closePortal);
+    document.getElementById('overlay').addEventListener('click',closePortal);
+
+    // Voice controls
+    document.getElementById('vc-speak').addEventListener('click',()=>{ AudioEngine.click(); SpeechEngine.speak("Black System online. All operatives are active. Network is secure."); });
+    document.getElementById('vc-stop').addEventListener('click',()=>{ SpeechEngine.stop(); AudioEngine.click(); });
+    document.getElementById('vc-announce').addEventListener('click',()=>{ AudioEngine.click(); SpeechEngine.speak(sysAnnouncements[annIdx%sysAnnouncements.length]); annIdx++; });
+    document.getElementById('vc-warn').addEventListener('click',()=>{ AudioEngine.warn(); SpeechEngine.speak(threatAlerts[thrIdx%threatAlerts.length]); thrIdx++; showNotification('> THREAT ALERT ISSUED','danger'); });
+
+    // Boot
+    setTimeout(()=>{
+        AudioEngine.init(); AudioEngine.boot(); runTerminal(); animateCounters();
+        showNotification('> Black System v3.0 initialized. Voice engine active.');
+        setTimeout(()=>{ SpeechEngine.speak("Black System version 3 online. Welcome, commander."); },3000);
+    }, 700);
+
+    // Periodic threat alerts
+    setInterval(()=>{
+        const msgs=[['> Intrusion attempt neutralized','warn'],['> Unknown node scanning perimeter','warn'],['> Firewall auto-updated',''],['> Zero-day blocked','danger'],['> Encryption re-keyed','']];
+        const [msg,type]=msgs[Math.floor(Math.random()*msgs.length)];
+        showNotification(msg,type);
+    },22000);
+
+    // Periodic voice announcements
+    setInterval(()=>{
+        const op=operatives[Math.floor(Math.random()*operatives.length)];
+        SpeechEngine.speak(op.voiceLine);
+        logVoice(`Auto: [${op.codename}] checked in`);
+    }, 45000);
+});
+</script>
+</body>
+</html>
